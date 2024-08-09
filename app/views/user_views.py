@@ -1,36 +1,20 @@
+# app/views/user_views.py
 from flask import Blueprint, request, jsonify
-from werkzeug.security import generate_password_hash, check_password_hash
-from app.models import User
 from app import db
+from app.models import User
 
-bp = Blueprint('user', __name__, url_prefix='/users')
+bp = Blueprint('user', __name__)
 
-@bp.route('/register', methods=['POST'])
-def register():
+@bp.route('/users', methods=['POST'])
+def create_user():
     data = request.get_json()
-    username = data.get('username')
-    email = data.get('email')
-    password = data.get('password')
-    
-    if User.query.filter_by(email=email).first():
-        return jsonify({"message": "User already exists"}), 400
+    if User.query.filter_by(username=data['username']).first() is not None:
+        return jsonify({'message': 'Username already exists'}), 400
+    if User.query.filter_by(email=data['email']).first() is not None:
+        return jsonify({'message': 'Email already exists'}), 400
 
-    password_hash = generate_password_hash(password)
-    new_user = User(username=username, email=email, password_hash=password_hash)
-    db.session.add(new_user)
+    user = User(username=data['username'], email=data['email'])
+    user.set_password(data['password'])  # Assuming you have a set_password method to hash the password
+    db.session.add(user)
     db.session.commit()
-    
-    return jsonify({"message": "User registered successfully"}), 201
-
-@bp.route('/login', methods=['POST'])
-def login():
-    data = request.get_json()
-    email = data.get('email')
-    password = data.get('password')
-    
-    user = User.query.filter_by(email=email).first()
-    if user and check_password_hash(user.password_hash, password):
-        # Generate a token here for authenticated sessions
-        return jsonify({"message": "Login successful"}), 200
-    else:
-        return jsonify({"message": "Invalid credentials"}), 401
+    return jsonify({'message': 'User created successfully'}), 201
